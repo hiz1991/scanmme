@@ -7,11 +7,11 @@ import SwiftUI
 struct ScannerView: View {
     // Environment variable to dismiss the sheet/cover
     @Environment(\.dismiss) var dismiss
-
+    
     // Callback to simulate finishing a scan and potentially navigating
     // In a real app, this would likely pass the scanned data back
     var onScanComplete: () -> Void
-
+    
     var body: some View {
         NavigationView { // Embed in NavigationView for a toolbar
             VStack {
@@ -23,24 +23,16 @@ struct ScannerView: View {
                     .font(.title2)
                     .padding(.top)
                 Spacer()
-                // Simulate capturing a document
+                // Simulate capturing a document - Action now handled by onScanComplete
                 Button("Simulate Capture & Edit") {
-                    // TODO: In a real app, capture data here
-                    dismiss() // Dismiss the scanner view
-                    // Trigger the action to navigate AFTER dismissing
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { // Short delay ensures dismiss completes
-                         onScanComplete()
-                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .padding(.bottom)
-            }
-            .navigationTitle("Scan Document")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss() // Dismiss the sheet
+                .navigationTitle("Scan Document")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            dismiss() // Dismiss the sheet
+                        }
                     }
                 }
             }
@@ -209,12 +201,21 @@ struct HomeScreenView: View {
                     .opacity(0) // Make it invisible
             )
             // Modifier to present the scanner view modally
-            .sheet(isPresented: $isShowingScanner) {
+            .sheet(isPresented: $isShowingScanner, onDismiss: {
+                // --- MODIFIED: Trigger navigation on dismiss if needed ---
+                // This is safer than DispatchQueue.main.asyncAfter
+                // Check if navigation should occur (e.g., if a scan was successfully simulated)
+                // For this example, we assume dismissal always means navigateToEditScreen should be true
+                // In a real app, the onScanComplete closure might set a flag that's checked here.
+                print("Scanner sheet dismissed, attempting navigation.")
+                navigateToEditScreen = true // Set flag *after* dismissal
+            }) {
                 // This is the view that will be presented
-                 ScannerView() {
-                     // This closure is called when the scanner simulates completion
-                     print("Scan complete, navigating to edit screen")
-                     navigateToEditScreen = true
+                 ScannerView {
+                     // This closure is called when "Simulate Capture & Edit" is tapped *before* dismissing
+                     print("Scan complete callback triggered.")
+                     // We no longer set navigateToEditScreen here directly.
+                     // The onDismiss handler will manage it.
                  }
             }
             // Alternatively, use .fullScreenCover for a non-dismissible-by-swipe presentation

@@ -35,6 +35,7 @@ struct ScanEditView: View {
     @State private var ocrText: String = "Performing OCR..."
     @State private var ocrInProgress: Bool = false
     // --- ADDED State to control OCR text editing ---
+    @State private var ocrError: String? = nil
     @State private var isOcrTextEditorDisabled: Bool = true
 
     // State for tabs
@@ -127,10 +128,17 @@ struct ScanEditView: View {
 
                 } else {
                     // OCR Text Tab Content
-                    VStack(alignment: .leading) {
+                    VStack(alignment: .leading, spacing: 10) { // Added spacing
                         if ocrInProgress {
                              ProgressView("Performing OCR...") // Show progress indicator
                                 .frame(height: 200)
+                                .frame(maxWidth: .infinity)
+                        } else if let errorMsg = ocrError { // --- ADDED: Display OCR Error ---
+                            VStack {
+                                Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.red)
+                                Text("OCR Error:")
+                                Text(errorMsg).font(.caption).foregroundColor(.gray)
+                            }.frame(height: 200)
                                 .frame(maxWidth: .infinity)
                         } else {
                             TextEditor(text: $ocrText) // Displays the extracted text
@@ -147,7 +155,7 @@ struct ScanEditView: View {
 
                          // --- UPDATED Edit Text Button ---
                          // Only show the button if the editor is disabled and OCR is not in progress
-                         if isOcrTextEditorDisabled && !ocrInProgress {
+                         if isOcrTextEditorDisabled && !ocrInProgress && ocrError == nil && !ocrText.isEmpty && ocrText != "No text recognized." {
                              Button("Edit Text") {
                                  print("Edit OCR Text Tapped - Enabling Editor")
                                  // Set state to enable the TextEditor
@@ -201,15 +209,18 @@ struct ScanEditView: View {
 
     private func performOCROnPDF() {
         guard let url = pdfUrl else {
-            ocrText = "Error: preview.pdf not found in bundle."
+            // --- UPDATED: Set error state ---
+            ocrError = "preview.pdf not found in bundle."
+            ocrText = "" // Clear text
             return
         }
         guard let pdfDocument = PDFDocument(url: url) else {
-            ocrText = "Error: Could not load PDF document."
+            ocrError = "Could not load PDF document."
+            ocrText = ""
             return
         }
 
-        ocrInProgress = true
+        ocrInProgress = true; ocrError = nil // Reset error state
         ocrText = "Performing OCR..." // Reset text
         let pageCount = pdfDocument.pageCount
         var recognizedTextAggregator: [Int: String] = [:] // Dictionary to store page results in order
@@ -268,7 +279,10 @@ struct ScanEditView: View {
             group.notify(queue: .main) {
                 // Combine results in page order
                 let finalCombinedText = recognizedTextAggregator.sorted(by: { $0.key < $1.key }).map({ $0.value }).joined(separator: "\n\n--- Page Break ---\n\n")
-                self.ocrText = finalCombinedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No text recognized." : finalCombinedText
+                let trimmedText = finalCombinedText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                // --- UPDATED: Set text or error, handle empty case ---
+                self.ocrText = trimmedText.isEmpty ? "No text recognized." : trimmedText
                 self.ocrInProgress = false
                 print("Vision OCR Attempt Complete.")
             }
