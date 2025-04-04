@@ -289,6 +289,7 @@ struct ScanEditView: View {
                     } else if let observations = request.results as? [VNRecognizedTextObservation] {
                         let pageStrings = observations.compactMap { $0.topCandidates(1).first?.string }
                         pageText = pageStrings.joined(separator: "\n")
+                        debugPrint("pageText and i: \(pageText)")
                     }
                     recognizedTextAggregator[i] = pageText
                     group.leave()
