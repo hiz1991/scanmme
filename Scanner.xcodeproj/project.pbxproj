@@ -6,32 +6,26 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXContainerItemProxy section */
-		7D213E602D9DCC8500FD52BB /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 7D213E492D9DCC8400FD52BB /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 7D213E502D9DCC8400FD52BB;
-			remoteInfo = Scanner;
-		};
-		7D213E6A2D9DCC8500FD52BB /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 7D213E492D9DCC8400FD52BB /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 7D213E502D9DCC8400FD52BB;
-			remoteInfo = Scanner;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXFileReference section */
 		7D213E512D9DCC8400FD52BB /* Scanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		7D213E5F2D9DCC8500FD52BB /* ScannerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScannerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		7D213E692D9DCC8500FD52BB /* ScannerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScannerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		7D65B5D82DA0640E0084DD00 /* Exceptions for "Scanner" folder in "Scanner" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7D213E502D9DCC8400FD52BB /* Scanner */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7D213E532D9DCC8400FD52BB /* Scanner */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7D65B5D82DA0640E0084DD00 /* Exceptions for "Scanner" folder in "Scanner" target */,
+			);
 			path = Scanner;
 			sourceTree = "<group>";
 		};
@@ -39,20 +33,6 @@
 
 /* Begin PBXFrameworksBuildPhase section */
 		7D213E4E2D9DCC8400FD52BB /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		7D213E5C2D9DCC8500FD52BB /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		7D213E662D9DCC8500FD52BB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -74,8 +54,6 @@
 			isa = PBXGroup;
 			children = (
 				7D213E512D9DCC8400FD52BB /* Scanner.app */,
-				7D213E5F2D9DCC8500FD52BB /* ScannerTests.xctest */,
-				7D213E692D9DCC8500FD52BB /* ScannerUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -105,46 +83,6 @@
 			productReference = 7D213E512D9DCC8400FD52BB /* Scanner.app */;
 			productType = "com.apple.product-type.application";
 		};
-		7D213E5E2D9DCC8500FD52BB /* ScannerTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 7D213E762D9DCC8500FD52BB /* Build configuration list for PBXNativeTarget "ScannerTests" */;
-			buildPhases = (
-				7D213E5B2D9DCC8500FD52BB /* Sources */,
-				7D213E5C2D9DCC8500FD52BB /* Frameworks */,
-				7D213E5D2D9DCC8500FD52BB /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				7D213E612D9DCC8500FD52BB /* PBXTargetDependency */,
-			);
-			name = ScannerTests;
-			packageProductDependencies = (
-			);
-			productName = ScannerTests;
-			productReference = 7D213E5F2D9DCC8500FD52BB /* ScannerTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		7D213E682D9DCC8500FD52BB /* ScannerUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 7D213E792D9DCC8500FD52BB /* Build configuration list for PBXNativeTarget "ScannerUITests" */;
-			buildPhases = (
-				7D213E652D9DCC8500FD52BB /* Sources */,
-				7D213E662D9DCC8500FD52BB /* Frameworks */,
-				7D213E672D9DCC8500FD52BB /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				7D213E6B2D9DCC8500FD52BB /* PBXTargetDependency */,
-			);
-			name = ScannerUITests;
-			packageProductDependencies = (
-			);
-			productName = ScannerUITests;
-			productReference = 7D213E692D9DCC8500FD52BB /* ScannerUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -157,14 +95,6 @@
 				TargetAttributes = {
 					7D213E502D9DCC8400FD52BB = {
 						CreatedOnToolsVersion = 16.3;
-					};
-					7D213E5E2D9DCC8500FD52BB = {
-						CreatedOnToolsVersion = 16.3;
-						TestTargetID = 7D213E502D9DCC8400FD52BB;
-					};
-					7D213E682D9DCC8500FD52BB = {
-						CreatedOnToolsVersion = 16.3;
-						TestTargetID = 7D213E502D9DCC8400FD52BB;
 					};
 				};
 			};
@@ -183,28 +113,12 @@
 			projectRoot = "";
 			targets = (
 				7D213E502D9DCC8400FD52BB /* Scanner */,
-				7D213E5E2D9DCC8500FD52BB /* ScannerTests */,
-				7D213E682D9DCC8500FD52BB /* ScannerUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		7D213E4F2D9DCC8400FD52BB /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		7D213E5D2D9DCC8500FD52BB /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		7D213E672D9DCC8500FD52BB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -221,34 +135,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		7D213E5B2D9DCC8500FD52BB /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		7D213E652D9DCC8500FD52BB /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		7D213E612D9DCC8500FD52BB /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 7D213E502D9DCC8400FD52BB /* Scanner */;
-			targetProxy = 7D213E602D9DCC8500FD52BB /* PBXContainerItemProxy */;
-		};
-		7D213E6B2D9DCC8500FD52BB /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 7D213E502D9DCC8400FD52BB /* Scanner */;
-			targetProxy = 7D213E6A2D9DCC8500FD52BB /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		7D213E712D9DCC8500FD52BB /* Debug */ = {
@@ -380,6 +267,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Scanner/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Needed for Scanning";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -423,6 +311,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Scanner/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Needed for Scanning";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -453,96 +342,6 @@
 			};
 			name = Release;
 		};
-		7D213E772D9DCC8500FD52BB /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = N5S3VD452S;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-				MACOSX_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = me.scan.now.here.ScannerTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Scanner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Scanner";
-				XROS_DEPLOYMENT_TARGET = 2.4;
-			};
-			name = Debug;
-		};
-		7D213E782D9DCC8500FD52BB /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = N5S3VD452S;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-				MACOSX_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = me.scan.now.here.ScannerTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Scanner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Scanner";
-				XROS_DEPLOYMENT_TARGET = 2.4;
-			};
-			name = Release;
-		};
-		7D213E7A2D9DCC8500FD52BB /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = N5S3VD452S;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-				MACOSX_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = me.scan.now.here.ScannerUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = Scanner;
-				XROS_DEPLOYMENT_TARGET = 2.4;
-			};
-			name = Debug;
-		};
-		7D213E7B2D9DCC8500FD52BB /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = N5S3VD452S;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
-				MACOSX_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = me.scan.now.here.ScannerUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = Scanner;
-				XROS_DEPLOYMENT_TARGET = 2.4;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -560,24 +359,6 @@
 			buildConfigurations = (
 				7D213E742D9DCC8500FD52BB /* Debug */,
 				7D213E752D9DCC8500FD52BB /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		7D213E762D9DCC8500FD52BB /* Build configuration list for PBXNativeTarget "ScannerTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				7D213E772D9DCC8500FD52BB /* Debug */,
-				7D213E782D9DCC8500FD52BB /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		7D213E792D9DCC8500FD52BB /* Build configuration list for PBXNativeTarget "ScannerUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				7D213E7A2D9DCC8500FD52BB /* Debug */,
-				7D213E7B2D9DCC8500FD52BB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
