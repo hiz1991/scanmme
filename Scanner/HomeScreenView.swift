@@ -2,6 +2,7 @@
 // Create a new SwiftUI View file named HomeScreenView.swift and paste this code.
 
 import SwiftUI
+import VisionKit
 
 // Placeholder View for the Scanner Interface
 struct ScannerView: View {
@@ -48,7 +49,11 @@ struct HomeScreenView: View {
     @State private var navigateToEditScreen = false
     // State to present the scanner view
     @State private var isShowingScanner = false
-
+    
+    // --- ADDED: State for scanner results ---
+    @State private var scannedDocument: VNDocumentCameraScan? = nil
+    @State private var scanError: Error? = nil
+    
     var body: some View {
         NavigationView {
             // Use ZStack to overlay buttons over the scrollable content
@@ -65,7 +70,7 @@ struct HomeScreenView: View {
                         .background(Color(.systemGray6))
                         .cornerRadius(10)
                         .padding(.horizontal)
-
+                        
                         // Recent Scans Section
                         Section {
                             VStack(spacing: 10) {
@@ -74,14 +79,14 @@ struct HomeScreenView: View {
                             }
                             .padding(.horizontal)
                         } header: {
-                             Text("Recent Scans")
+                            Text("Recent Scans")
                                 .font(.title2.weight(.semibold))
                                 .padding(.horizontal)
-                                // Ensure header aligns with list content if needed
+                            // Ensure header aligns with list content if needed
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
-
-
+                        
+                        
                         // Folders Section
                         Section {
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 15) {
@@ -92,14 +97,14 @@ struct HomeScreenView: View {
                             .padding(.horizontal)
                         } header: {
                             Text("Folders")
-                               .font(.title2.weight(.semibold))
-                               .padding(.horizontal)
-                               .frame(maxWidth: .infinity, alignment: .leading)
+                                .font(.title2.weight(.semibold))
+                                .padding(.horizontal)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
-
-
+                        
+                        
                         // Providers Section
-                         Section {
+                        Section {
                             VStack(spacing: 10) {
                                 ProviderItem(icon: "building.columns", title: "ATT")
                                 ProviderItem(icon: "building.columns", title: "Disney")
@@ -109,79 +114,79 @@ struct HomeScreenView: View {
                             .padding(.horizontal)
                         } header: {
                             Text("Providers")
-                               .font(.title2.weight(.semibold))
-                               .padding(.horizontal)
-                               .frame(maxWidth: .infinity, alignment: .leading)
+                                .font(.title2.weight(.semibold))
+                                .padding(.horizontal)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
-
+                        
                         // Spacer to ensure content doesn't sit right under the buttons
                         // Adjust height as needed
                         Spacer(minLength: 100)
-
+                        
                     }
                     .padding(.top) // Add padding at the top of the VStack
                 } // End ScrollView
                 .coordinateSpace(name: "scrollView") // For potential future scroll effects
-
+                
                 // --- Button Positioning (Absolute within ZStack) ---
                 // This positions the buttons relative to the bottom edge of the screen area
                 ZStack {
-                     // Main Scan Button Container (Frame) - Approx calculations for positioning
-                     let frameWidth: CGFloat = 72
-                     let mainButtonWidth: CGFloat = 64
-                     let autoButtonWidth: CGFloat = 40
-                     let gap: CGFloat = 4
-                     let screenWidth = UIScreen.main.bounds.width
-                     let frameX = screenWidth / 2
-                     let frameY: CGFloat = frameWidth / 2 // Y position relative to bottom padding
-
-                     Circle()
+                    // Main Scan Button Container (Frame) - Approx calculations for positioning
+                    let frameWidth: CGFloat = 72
+                    let mainButtonWidth: CGFloat = 64
+                    let autoButtonWidth: CGFloat = 40
+                    let gap: CGFloat = 4
+                    let screenWidth = UIScreen.main.bounds.width
+                    let frameX = screenWidth / 2
+                    let frameY: CGFloat = frameWidth / 2 // Y position relative to bottom padding
+                    
+                    Circle()
                         .fill(Color(.systemGray5)) // Frame color
                         .frame(width: frameWidth, height: frameWidth) // 64 + 2*4 padding
                         .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
                         .position(x: frameX, y: frameY) // Position frame center
-
-                     // Main Scan Button
-                     Button {
-                         print("Scan Tapped - Opening Scanner")
-                         // Remove direct navigation: navigateToEditScreen = true
-                         isShowingScanner = true // Present the scanner view
-                     } label: {
-                         Image(systemName: "viewfinder")
-                             .font(.system(size: 28, weight: .medium))
-                             .foregroundColor(.white)
-                             .frame(width: mainButtonWidth, height: mainButtonWidth)
-                             .background(Color.blue)
-                             .clipShape(Circle())
-                             .shadow(color: Color.blue.opacity(0.4), radius: 5, y: 3)
-                     }
-                     .position(x: frameX, y: frameY) // Position button center
-
-                     // Auto Scan Button
-                     Button {
-                         print("Auto Scan Tapped - Opening Scanner")
-                         // TODO: Implement specific auto-scan logic if different
-                         isShowingScanner = true // Also present the scanner view
-                     } label: {
-                         Image(systemName: "film")
-                             .font(.system(size: 18, weight: .medium))
-                             .foregroundColor(.white)
-                             .frame(width: autoButtonWidth, height: autoButtonWidth)
-                             .background(Color.blue) // Make background solid blue
-                             .clipShape(Circle())
-                             .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-                     }
-                     .opacity(0.8) // Apply opacity
-                     // Calculate X: Center + Frame Radius + Gap + Auto Button Radius
-                     .position(x: frameX + (frameWidth / 2) + gap + (autoButtonWidth / 2),
-                               // Align Y centers (Main button Y is frameY)
-                               y: frameY)
+                    
+                    // Main Scan Button
+                    Button {
+                        print("Scan Tapped - Opening Scanner")
+                        // Remove direct navigation: navigateToEditScreen = true
+                        isShowingScanner = true // Present the scanner view
+                    } label: {
+                        Image(systemName: "viewfinder")
+                            .font(.system(size: 28, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(width: mainButtonWidth, height: mainButtonWidth)
+                            .background(Color.blue)
+                            .clipShape(Circle())
+                            .shadow(color: Color.blue.opacity(0.4), radius: 5, y: 3)
+                    }
+                    .position(x: frameX, y: frameY) // Position button center
+                    
+                    // Auto Scan Button
+                    Button {
+                        print("Auto Scan Tapped - Opening Scanner")
+                        // TODO: Implement specific auto-scan logic if different
+                        isShowingScanner = true // Also present the scanner view
+                    } label: {
+                        Image(systemName: "film")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(width: autoButtonWidth, height: autoButtonWidth)
+                            .background(Color.blue) // Make background solid blue
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
+                    }
+                    .opacity(0.8) // Apply opacity
+                    // Calculate X: Center + Frame Radius + Gap + Auto Button Radius
+                    .position(x: frameX + (frameWidth / 2) + gap + (autoButtonWidth / 2),
+                              // Align Y centers (Main button Y is frameY)
+                              y: frameY)
                 }
                 .frame(height: 72) // Container height for positioning within ZStack overlay
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom) // Align container to ZStack bottom
                 .padding(.bottom, 30) // Overall padding from device safe area bottom
-
-
+                
+                
             } // End ZStack
             .navigationTitle("LetterScan")
             .toolbar {
@@ -196,37 +201,55 @@ struct HomeScreenView: View {
             }
             // Link to the Edit Screen - Navigation is now triggered AFTER scanning
             .background(
-                 // Invisible NavigationLink for programmatic navigation
-                NavigationLink(destination: ScanEditView(), isActive: $navigateToEditScreen) { EmptyView() }
+                // Invisible NavigationLink for programmatic navigation
+                NavigationLink(destination: ScanEditView(scannedDocument: self.scannedDocument), isActive: $navigateToEditScreen) { EmptyView() }
                     .opacity(0) // Make it invisible
             )
             // Modifier to present the scanner view modally
+            // --- MODIFIED: Present the REAL scanner ---
             .sheet(isPresented: $isShowingScanner, onDismiss: {
-                // --- MODIFIED: Trigger navigation on dismiss if needed ---
-                // This is safer than DispatchQueue.main.asyncAfter
-                // Check if navigation should occur (e.g., if a scan was successfully simulated)
-                // For this example, we assume dismissal always means navigateToEditScreen should be true
-                // In a real app, the onScanComplete closure might set a flag that's checked here.
-                print("Scanner sheet dismissed, attempting navigation.")
-                navigateToEditScreen = true // Set flag *after* dismissal
+                // --- MODIFIED: Navigate only if a scan was successful ---
+                if scannedDocument != nil {
+                    print("Scanner sheet dismissed, successful scan detected. Navigating.")
+                    navigateToEditScreen = true
+                    // Important: Consider resetting scannedDocument after navigation trigger
+                    // to avoid re-triggering if the sheet is presented again.
+                    // scannedDocument = nil // Or handle this in ScanEditView's onAppear/onDisappear
+                } else {
+                    print("Scanner sheet dismissed, no successful scan detected.")
+                    // Reset error if needed
+                    scanError = nil
+                }
             }) {
                 // This is the view that will be presented
-                 ScannerView {
-                     // This closure is called when "Simulate Capture & Edit" is tapped *before* dismissing
-                     print("Scan complete callback triggered.")
-                     // We no longer set navigateToEditScreen here directly.
-                     // The onDismiss handler will manage it.
-                 }
+                // Present the DocumentScannerView wrapper
+                DocumentScannerView { result in
+                    // This closure receives the result from the scanner's Coordinator
+                    switch result {
+                    case .success(let scan):
+                        print("Scan received in HomeScreenView. Page count: \(scan.pageCount)")
+                        self.scannedDocument = scan // Store the successful scan result
+                        self.scanError = nil // Clear any previous error
+                    case .failure(let error):
+                        print("Scan failed in HomeScreenView: \(error.localizedDescription)")
+                        self.scanError = error // Store the error
+                        self.scannedDocument = nil // Clear any previous scan
+                    }
+                    // Note: Dismissal is handled by the Coordinator/onDismiss now
+                }
+                // Alternatively, use .fullScreenCover for a non-dismissible-by-swipe presentation
+                // .fullScreenCover(isPresented: $isShowingScanner) { ScannerView(...) }
+                
             }
-            // Alternatively, use .fullScreenCover for a non-dismissible-by-swipe presentation
-            // .fullScreenCover(isPresented: $isShowingScanner) { ScannerView(...) }
-
+            // Use stack style for broader compatibility, especially on iPad
+            .navigationViewStyle(.stack)
         }
-        // Use stack style for broader compatibility, especially on iPad
-        .navigationViewStyle(.stack)
+        
+        
     }
 }
 
+    
 // MARK: - Home Screen Helper Views
 
 struct RecentScanItem: View {

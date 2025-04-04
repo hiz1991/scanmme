@@ -1,90 +1,95 @@
 import SwiftUI
-import PDFKit // For loading PDF
-import Vision // For OCR
+import PDFKit // Needed for PDF Generation
+import VisionKit // Needed for VNDocumentCameraScan
+import Vision // Needed for OCR
 
-// MARK: - PDF Viewer Representable
-// Wrapper to use UIKit's PDFView in SwiftUI
-// (Remains the same as before)
-struct PDFKitView: UIViewRepresentable {
-    let url: URL // URL of the PDF file
+// MARK: - Activity View Representable (for Share Sheet)
+// This struct wraps the UIKit UIActivityViewController for use in SwiftUI
+struct ActivityView: UIViewControllerRepresentable {
+    // Items to share (in our case, the URL of the generated PDF)
+    var activityItems: [Any]
+    // Excluded activity types (optional)
+    var applicationActivities: [UIActivity]? = nil
 
-    func makeUIView(context: Context) -> PDFView {
-        let pdfView = PDFView()
-        pdfView.document = PDFDocument(url: self.url)
-        pdfView.autoScales = true
-        pdfView.displayMode = .singlePage
-        pdfView.backgroundColor = UIColor.systemGray5
-        return pdfView
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
+        return controller
     }
 
-    func updateUIView(_ uiView: PDFView, context: Context) {
-        if uiView.document?.documentURL != self.url {
-             uiView.document = PDFDocument(url: self.url)
-        }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
+        // No update needed
     }
 }
 
+
+// Enum for OCR Text Editor State
+enum OcrEditorState {
+    case disabled
+    case enabled
+}
+
+// Default folder options constant
+private let defaultFolderOptions = ["Bills", "Personal", "Work", "Unfiled"]
+
 // MARK: - Scan Edit View with Vision OCR
 struct ScanEditView: View {
-    // State for inputs
+    // Input property for the scanned document
+    let scannedDocument: VNDocumentCameraScan?
+
+    // State for form inputs
     @State private var scanTitle: String = "Electricity Bill - March"
     @State private var selectedFolder = "Bills"
     @State private var tags: String = "Bill, Urgent"
     @State private var reminderDate = Date()
-    // Initialize ocrText state
-    @State private var ocrText: String = "Performing OCR..."
+
+    // State related to OCR processing
+    @State private var ocrText: String = "Processing scan..."
     @State private var ocrInProgress: Bool = false
-    // --- ADDED State to control OCR text editing ---
     @State private var ocrError: String? = nil
-    @State private var isOcrTextEditorDisabled: Bool = true
+    @State private var ocrEditorState: OcrEditorState = .disabled
+    @State private var imagesToProcess: [CGImage] = []
 
-    // State for tabs
-    @State private var selectedTab = 0 // 0 for Details, 1 for OCR
+    // State for tabs (Details vs OCR Text)
+    @State private var selectedTab = 0
 
-    let folderOptions = ["Bills", "Personal", "Work", "Unfiled"]
-
-    // Computed property to safely get the PDF URL from the bundle
-    private var pdfUrl: URL? {
-        Bundle.main.url(forResource: "preview", withExtension: "pdf")
-    }
+    // --- ADDED: State for Share Sheet ---
+    @State private var showShareSheet = false
+    @State private var pdfFileURL: URL? = nil // Holds the URL of the generated PDF
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
 
-                // --- PDF Preview Area ---
-                if let url = pdfUrl {
-                    PDFKitView(url: url)
-                        .aspectRatio(1.0, contentMode: .fit)
-                        .frame(height: 250)
-                        .cornerRadius(10)
-                        .padding(.horizontal)
+                // --- Preview Area ---
+                if !imagesToProcess.isEmpty {
+                     Image(imagesToProcess[0], scale: 1.0, label: Text("Scanned Page 1"))
+                         .resizable()
+                         .aspectRatio(1.0, contentMode: .fit)
+                         .frame(height: 250)
+                         .cornerRadius(10)
+                         .padding(.horizontal)
+                } else if scannedDocument == nil {
+                     Rectangle()
+                         .fill(Color(.systemGray4))
+                         .aspectRatio(1.0, contentMode: .fit)
+                         .frame(height: 250)
+                         .cornerRadius(10)
+                         .overlay(Text("No Scan Data").foregroundColor(.gray))
+                         .padding(.horizontal)
                 } else {
-                    // Fallback placeholder if PDF is not found
-                    Rectangle()
-                        .fill(Color(.systemGray4))
-                        .aspectRatio(1.0, contentMode: .fit)
-                        .frame(height: 250)
-                        .cornerRadius(10)
-                        .overlay(
-                            VStack {
-                                Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.orange)
-                                Text("preview.pdf not found").font(.caption).foregroundColor(.gray)
-                            }
-                        )
-                        .padding(.horizontal)
+                     ProgressView("Processing Scan...")
+                         .frame(height: 250)
+                         .padding(.horizontal)
                 }
-                // --- END PDF Preview Area ---
+                // --- END Preview Area ---
 
                  // --- Buttons (Two Rows, Dashed Outline) ---
-                 // First Row
                  HStack(spacing: 12) {
                      InfoButton(label: "Category", value: "Personal", color: .blue)
                      InfoButton(label: "Events", value: "5th of May 2025", color: .green)
                  }
                  .padding(.horizontal)
 
-                 // Second Row
                  HStack(spacing: 12) {
                      InfoButton(label: "Keep", value: "Months", color: .purple)
                      InfoButton(label: "Language", value: "English", color: .red)
@@ -93,7 +98,7 @@ struct ScanEditView: View {
                  .padding(.bottom)
                  // --- END BUTTONS ---
 
-                // Tabs
+                // Tabs for switching between Details and OCR Text
                 Picker("View", selection: $selectedTab) {
                     Text("Details").tag(0)
                     Text("OCR Text").tag(1)
@@ -102,22 +107,21 @@ struct ScanEditView: View {
                 .padding(.horizontal)
 
 
-                // Tab Content
+                // Tab Content Area
                 if selectedTab == 0 {
-                    // Details Tab Content
+                    // Details Tab Content (Form fields)
                     VStack(spacing: 15) {
                          TextField("Title", text: $scanTitle)
                              .textFieldStyle(RoundedBorderTextFieldStyle())
 
                          Picker("Folder", selection: $selectedFolder) {
-                             ForEach(folderOptions, id: \.self) { option in
+                             ForEach(defaultFolderOptions, id: \.self) { option in
                                  Text(option)
                              }
                          }
                          .padding(.vertical, 5)
                          .background(Color(.systemGray6))
                          .cornerRadius(8)
-
 
                          TextField("Tags (comma separated)", text: $tags)
                              .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -128,42 +132,36 @@ struct ScanEditView: View {
 
                 } else {
                     // OCR Text Tab Content
-                    VStack(alignment: .leading, spacing: 10) { // Added spacing
+                    VStack(alignment: .leading, spacing: 10) {
                         if ocrInProgress {
-                             ProgressView("Performing OCR...") // Show progress indicator
+                             ProgressView("Performing OCR...")
                                 .frame(height: 200)
                                 .frame(maxWidth: .infinity)
-                        } else if let errorMsg = ocrError { // --- ADDED: Display OCR Error ---
+                        } else if let errorMsg = ocrError {
                             VStack {
                                 Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.red)
                                 Text("OCR Error:")
                                 Text(errorMsg).font(.caption).foregroundColor(.gray)
-                            }.frame(height: 200)
-                                .frame(maxWidth: .infinity)
+                            }
+                            .frame(height: 200)
+                            .frame(maxWidth: .infinity)
                         } else {
-                            TextEditor(text: $ocrText) // Displays the extracted text
+                            TextEditor(text: $ocrText)
                                  .frame(height: 200)
                                  .border(Color(.systemGray5), width: 1)
                                  .cornerRadius(5)
-                                 // --- UPDATED disabled modifier ---
-                                 .disabled(isOcrTextEditorDisabled) // Use state variable
-                                 .foregroundColor(ocrText.starts(with: "Performing OCR") || ocrText.starts(with: "Error") || ocrText == "No text recognized." ? .gray : .primary)
-                                 // Add a subtle background change when enabled
-                                 .background(isOcrTextEditorDisabled ? Color.clear : Color(.systemGray6))
-
+                                 .disabled(ocrEditorState == .disabled)
+                                 .foregroundColor(ocrText.starts(with: "Processing scan...") || ocrText == "No text recognized." ? .gray : .primary)
+                                 .background(ocrEditorState == .disabled ? Color.clear : Color(.systemGray6))
                         }
 
-                         // --- UPDATED Edit Text Button ---
-                         // Only show the button if the editor is disabled and OCR is not in progress
-                         if isOcrTextEditorDisabled && !ocrInProgress && ocrError == nil && !ocrText.isEmpty && ocrText != "No text recognized." {
+                         if ocrEditorState == .disabled && !ocrInProgress && ocrError == nil && !ocrText.isEmpty && ocrText != "No text recognized." && !ocrText.starts(with: "Processing scan...") {
                              Button("Edit Text") {
                                  print("Edit OCR Text Tapped - Enabling Editor")
-                                 // Set state to enable the TextEditor
-                                 isOcrTextEditorDisabled = false
+                                 ocrEditorState = .enabled
                              }
                              .padding(.top, 5)
                          }
-                         // --- END UPDATED Edit Text Button ---
                     }
                     .padding()
                 }
@@ -177,137 +175,199 @@ struct ScanEditView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 4) {
-                    Text("Saved")
+                    Text("Saved") // Placeholder - Implement save logic
                         .font(.body)
                         .foregroundColor(.gray)
-                    Button { print("Share Tapped") } label: { Image(systemName: "square.and.arrow.up") }
+                    // --- MODIFIED: Share Button Action ---
+                    Button {
+                        // Generate PDF and prepare for sharing
+                        if let url = generatePDF() {
+                            self.pdfFileURL = url // Store the URL
+                            self.showShareSheet = true // Trigger the share sheet
+                            print("Generated PDF for sharing at: \(url)")
+                        } else {
+                            print("Error: Could not generate PDF for sharing.")
+                            // Optionally show an error alert to the user
+                        }
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                    }
                     .padding(.leading, 4)
+                    // Disable share button if there's no scan data
+                    .disabled(scannedDocument == nil)
                 }
             }
-            // --- Optional: Add Done button to toolbar when editing OCR ---
             ToolbarItem(placement: .navigationBarLeading) {
-                 if !isOcrTextEditorDisabled { // Show Done button only when editing
+                 if ocrEditorState == .enabled {
                      Button("Done") {
-                         isOcrTextEditorDisabled = true // Disable editor again
-                         // Optionally dismiss keyboard here if needed
-                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                         ocrEditorState = .disabled
+                         hideKeyboard()
                      }
                  }
             }
         }
-        // Perform OCR when the view appears
         .onAppear {
-            // Avoid running OCR again if it was already successful or in progress
-            if ocrText == "Performing OCR..." && !ocrInProgress {
-                 performOCROnPDF()
+            if imagesToProcess.isEmpty && scannedDocument != nil {
+                 processScannedDocument()
+             }
+        }
+        // --- ADDED: Sheet Modifier for Share Sheet ---
+        // Presents the ActivityView when showShareSheet is true and pdfFileURL is set
+        .sheet(isPresented: $showShareSheet, onDismiss: {
+            // Optional: Clean up the temporary PDF file after the sheet is dismissed
+            if let url = pdfFileURL {
+                try? FileManager.default.removeItem(at: url)
+                print("Cleaned up temporary PDF: \(url)")
+                pdfFileURL = nil // Reset the URL
+            }
+        }) {
+            // Ensure pdfFileURL is valid before presenting the ActivityView
+            if let url = pdfFileURL {
+                ActivityView(activityItems: [url])
+            } else {
+                // Fallback or error view if URL is somehow nil when sheet is shown
+                Text("Error preparing share data.")
             }
         }
     }
 
-    // MARK: - Vision OCR Functionality
-    // (performOCROnPDF and renderPageToImage functions remain the same)
+    // MARK: - Document Processing and OCR Functions
 
-    private func performOCROnPDF() {
-        guard let url = pdfUrl else {
-            // --- UPDATED: Set error state ---
-            ocrError = "preview.pdf not found in bundle."
-            ocrText = "" // Clear text
-            return
-        }
-        guard let pdfDocument = PDFDocument(url: url) else {
-            ocrError = "Could not load PDF document."
+    /// Extracts images from the `scannedDocument` and triggers OCR.
+    private func processScannedDocument() {
+        guard let scan = scannedDocument else {
+            print("ScanEditView: No scanned document provided.")
+            ocrError = "No scan data available."
             ocrText = ""
             return
         }
-
-        ocrInProgress = true; ocrError = nil // Reset error state
-        ocrText = "Performing OCR..." // Reset text
-        let pageCount = pdfDocument.pageCount
-        var recognizedTextAggregator: [Int: String] = [:] // Dictionary to store page results in order
-
-        // Use a DispatchGroup to wait for all page OCR tasks to complete
-        let group = DispatchGroup()
-
+        print("Processing scanned document with \(scan.pageCount) pages.")
+        var extractedImages: [CGImage] = []
         DispatchQueue.global(qos: .userInitiated).async {
-            for i in 0..<pageCount {
-                group.enter() // Enter group for this page
-                guard let page = pdfDocument.page(at: i) else {
-                    print("Error getting page \(i)")
-                    recognizedTextAggregator[i] = "[Error getting page \(i)]"
-                    group.leave() // Leave group if page fails
-                    continue
+            for i in 0..<scan.pageCount {
+                let originalImage = scan.imageOfPage(at: i)
+                if let cgImage = originalImage.cgImage {
+                    extractedImages.append(cgImage)
+                } else {
+                    print("Warning: Could not get CGImage for page \(i)")
                 }
-
-                // Render page to image (adjust scale for better OCR if needed)
-                guard let pageImage = renderPageToImage(page: page, scale: 2.0)?.cgImage else {
-                    print("Error rendering page \(i) to image")
-                    recognizedTextAggregator[i] = "[Error rendering page \(i)]"
-                    group.leave() // Leave group if render fails
-                    continue
+            }
+            DispatchQueue.main.async {
+                self.imagesToProcess = extractedImages
+                print("Extracted \(self.imagesToProcess.count) images.")
+                if !self.imagesToProcess.isEmpty {
+                     performOCROnImages(images: self.imagesToProcess)
+                } else {
+                     self.ocrText = "Error: Could not extract images from scan."
+                     self.ocrError = "Image extraction failed."
                 }
+            }
+        }
+    }
 
-                // Create Vision request for this page's image
-                let requestHandler = VNImageRequestHandler(cgImage: pageImage, options: [:])
+    /// Performs OCR using the Vision framework on an array of CGImage objects.
+    private func performOCROnImages(images: [CGImage]) {
+        guard !images.isEmpty else {
+            ocrError = "No images provided for OCR."
+            ocrText = ""
+            return
+        }
+        ocrInProgress = true
+        ocrError = nil
+        ocrText = "Performing OCR..."
+        var recognizedTextAggregator: [Int: String] = [:]
+        let group = DispatchGroup()
+        DispatchQueue.global(qos: .userInitiated).async {
+            for (i, cgImage) in images.enumerated() {
+                group.enter()
+                let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
                 let recognizeTextRequest = VNRecognizeTextRequest { (request, error) in
-                    // Handle completion for THIS page's request
                     var pageText = ""
                     if let error = error {
-                        print("Error on page \(i): \(error.localizedDescription)")
+                        print("Error performing OCR on page \(i): \(error.localizedDescription)")
                         pageText = "[OCR Error on page \(i + 1)]"
                     } else if let observations = request.results as? [VNRecognizedTextObservation] {
                         let pageStrings = observations.compactMap { $0.topCandidates(1).first?.string }
                         pageText = pageStrings.joined(separator: "\n")
                     }
-                    recognizedTextAggregator[i] = pageText // Store result with page index
-                    group.leave() // Leave group for this page
+                    recognizedTextAggregator[i] = pageText
+                    group.leave()
                 }
-
                 recognizeTextRequest.recognitionLevel = .accurate
                 recognizeTextRequest.usesLanguageCorrection = true
-
-                // Perform the request for this page
                 do {
                     try requestHandler.perform([recognizeTextRequest])
                 } catch {
-                    print("Failed to perform request on page \(i): \(error)")
+                    print("Failed to perform text recognition request on page \(i): \(error)")
                     recognizedTextAggregator[i] = "[Request Error on page \(i + 1)]"
-                    group.leave() // Leave group if perform fails
+                    group.leave()
                 }
             }
-
-            // Notify main thread when ALL pages are processed
             group.notify(queue: .main) {
-                // Combine results in page order
-                let finalCombinedText = recognizedTextAggregator.sorted(by: { $0.key < $1.key }).map({ $0.value }).joined(separator: "\n\n--- Page Break ---\n\n")
+                let finalCombinedText = recognizedTextAggregator
+                                        .sorted(by: { $0.key < $1.key })
+                                        .map({ $0.value })
+                                        .joined(separator: "\n\n--- Page Break ---\n\n")
                 let trimmedText = finalCombinedText.trimmingCharacters(in: .whitespacesAndNewlines)
-
-                // --- UPDATED: Set text or error, handle empty case ---
                 self.ocrText = trimmedText.isEmpty ? "No text recognized." : trimmedText
                 self.ocrInProgress = false
-                print("Vision OCR Attempt Complete.")
+                print("Vision OCR on scanned images complete.")
             }
         }
     }
 
-    // Helper function to render a PDFPage to a UIImage
-    // (Remains the same as before)
-    private func renderPageToImage(page: PDFPage, scale: CGFloat = 1.0) -> UIImage? {
-        let pageRect = page.bounds(for: .mediaBox)
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: pageRect.width * scale, height: pageRect.height * scale))
+    // MARK: - PDF Generation
 
-        let img = renderer.image { ctx in
-            UIColor.white.set()
-            ctx.fill(CGRect(origin: .zero, size: renderer.format.bounds.size))
-            ctx.cgContext.translateBy(x: 0.0, y: renderer.format.bounds.size.height)
-            ctx.cgContext.scaleBy(x: scale, y: -scale)
-            page.draw(with: .mediaBox, to: ctx.cgContext)
+    // --- ADDED: Function to generate PDF ---
+    /// Generates a PDF document from the scanned images.
+    /// - Returns: The URL of the temporary PDF file, or nil if generation fails.
+    private func generatePDF() -> URL? {
+        guard let scan = scannedDocument, scan.pageCount > 0 else {
+            print("No scanned document or pages available to generate PDF.")
+            return nil
         }
-        return img
+
+        let pdfDocument = PDFDocument()
+
+        // Add each scanned page to the PDF document
+        for i in 0..<scan.pageCount {
+            // Get the UIImage from the scan
+            let image = scan.imageOfPage(at: i)
+            // Create a PDF page instance from the image
+            guard let pdfPage = PDFPage(image: image) else {
+                print("Warning: Could not create PDFPage for page \(i)")
+                continue // Skip this page if conversion fails
+            }
+            // Insert the page into the PDF document
+            pdfDocument.insert(pdfPage, at: pdfDocument.pageCount)
+        }
+
+        // Get the app's temporary directory URL
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+        // Create a unique filename for the PDF
+        let pdfFilename = "\(scanTitle.isEmpty ? "Scan" : scanTitle)-\(UUID().uuidString).pdf"
+        let pdfFileURL = tempDirectoryURL.appendingPathComponent(pdfFilename)
+
+        // Write the PDF document data to the temporary file URL
+        // Note: For large documents, consider writing asynchronously.
+        let success = pdfDocument.write(to: pdfFileURL)
+
+        if success {
+            return pdfFileURL // Return the URL if writing was successful
+        } else {
+            print("Error: Failed to write PDF data to file.")
+            return nil // Return nil if writing failed
+        }
+    }
+
+
+    // Helper function to dismiss the keyboard
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
 // MARK: - Helper View for Dashed Outline Buttons
-// (Remains the same as before)
 struct InfoButton: View {
     let label: String
     let value: String
@@ -319,14 +379,8 @@ struct InfoButton: View {
             // TODO: Implement action for these buttons
         } label: {
             VStack(spacing: 2) {
-                Text(label)
-                    .font(.caption)
-                    .italic()
-                    .foregroundColor(.gray)
-                Text(value)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                Text(label).font(.caption).italic().foregroundColor(.gray)
+                Text(value).font(.subheadline).fontWeight(.semibold).foregroundColor(.primary)
             }
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
@@ -345,7 +399,7 @@ struct InfoButton: View {
 struct ScanEditView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
-            ScanEditView()
+            ScanEditView(scannedDocument: nil)
         }
     }
 }
