@@ -13,6 +13,7 @@ struct HomeScreenView: View {
     @State private var isShowingScanner = false // Controls presentation of scanner sheet
     @State private var scannedDocument: VNDocumentCameraScan? = nil // Holds result from scanner
     @State private var scanError: Error? = nil // Holds error from scanner
+    
 
     var body: some View {
         NavigationView {

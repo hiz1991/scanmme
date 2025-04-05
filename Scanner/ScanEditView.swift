@@ -361,10 +361,30 @@ struct ScanEditView: View {
                     performOCROnImages(images: self.imagesToProcess)
                 } else {
                     // Handle case where no images could be extracted
-                    self.ocrText = "Error: Could not extract images from scan."
+                    self.ocrText = "Error: Could not extract images fr0om scan."
                     self.ocrError = "Image extraction failed."
                 }
                 // Removed stray semicolon and fixed placement of the if/else block
+            }
+            DispatchQueue.main.async {
+//                let pdf = generatePDFData() as PDFDocument?
+                // 2. Generate PDF Data
+                guard let pdfData = generatePDFData() else { print("Error generating PDF data."); return }
+                let uri = PDFDocument(data: pdfData)!
+
+                let dups = checkForDuplicatePages(in: uri)
+                    print("dups \(dups)\n")
+//                let copiesEntries = recognizedTexts.map(0$.body
+//                let copies = filterCopies(recognizedTexts as  Any as! [TextCopy])
+//                print("SOLD, SOLD, SOLD: \(copies)")
+//                
+////                let txCopy = TextCopy(content:"", quality: 0.9);
+////                let copies = filterCopies( self.recognizedTexts)
+                ///
+//                if self.recognizedTexts.count == extractedImages.count {
+                print("recognizedTexts index", similarityIndex(between: self.recognizedTexts[0], and: self.recognizedTexts[1]))
+//                }
+                
             }
         }
     }
@@ -414,7 +434,22 @@ struct ScanEditView: View {
                 self.ocrText = trimmedText.isEmpty ? "No text recognized." : trimmedText
                 self.ocrInProgress = false;
                 self.recognizedTexts.append(contentsOf: recognizedTextAggregator.sorted(by: { $0.key < $1.key }).map({ $0.value }))
-                print("Vision OCR on scanned images complete. Total: \(self.recognizedTexts.count)")
+                
+                print(similarityIndex(between: "", and: ""))
+//                DispatchQueue.global(qos: .userInitiated).async {
+//                    let cnt = self.recognizedTexts.count
+//                    for 0..<cnt where cnt > 1 { let i; in
+//                        print("\(i): \(self.recognizedTexts[i])")
+//                    }
+//                    for(1..<cnt){ i in
+//                        print("SIMILARITY: \(i): \(self.recognizedTexts[i])", "\(similarityIndex(between: self.recognizedTexts[i], and: self.recognizedTexts[i-1]))\n")
+//                        Text("hi")
+//                    }
+//                }
+              
+//                print(similarityIndex(between: <#T##String#>, and: <#T##String#>))
+           
+                print("Vision OCR on scanned images complete. Total: \(self.recognizedTexts.count), \(self.imagesToProcess.count)")
             }
         }
     }
