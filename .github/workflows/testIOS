@@ -1,0 +1,26 @@
+name: iOS CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Xcode Environment
+        run: xcode-select --print-path
+
+      - name: Build and Run Tests
+        run: |
+          # If you're using a workspace, specify it with -workspace, otherwise use -project
+          xcodebuild -project ./Scanner.xcodeproj \
+                                                    -scheme ScannerUITests \
+                                                    -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.4' \
+                                                    clean build test
