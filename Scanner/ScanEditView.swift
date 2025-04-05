@@ -5,6 +5,7 @@ import Vision // For OCR
 import QuickLook // <-- Import QuickLook
 import CoreSpotlight // For Spotlight indexing
 import UniformTypeIdentifiers // For UTType
+import SwiftData
 
 // MARK: - Activity View Representable (for Share Sheet)
 // Wraps UIActivityViewController for SwiftUI
@@ -72,6 +73,16 @@ private let defaultFolderOptions = ["Bills", "Personal", "Work", "Unfiled"]
 
 // MARK: - Scan Edit View with Vision OCR
 struct ScanEditView: View {
+
+    // Access the ModelContext
+    @Environment(\.modelContext) private var modelContext
+
+    // Fetch available folders to populate the picker
+    @Query(sort: \Folder.name) private var folders: [Folder]
+
+    // State for the selected folder (using its ID for persistence stability)
+    @State private var selectedFolderID: UUID? = nil // Start with no folder selected
+
     // Input property for the scanned document
     let scannedDocument: VNDocumentCameraScan?
 
@@ -108,6 +119,15 @@ struct ScanEditView: View {
     // State for QuickLook Preview
     @State private var showQLPreview = false
     @State private var pdfPreviewURL: URL? = nil
+    
+    @State var recognizedTexts: [String] = [
+                                            "Test me, allo",
+                                            "Hi",
+                                            "Test ne now",
+                                            "Test me, allo",
+                                            "Test me, allo"
+                                            ]
+    
 
     // Spotlight Domain Identifier
     private let spotlightDomainIdentifier = "me.scan.now.here.Scanner"
@@ -181,9 +201,12 @@ struct ScanEditView: View {
                     VStack(spacing: 15) {
                          TextField("Title", text: $scanTitle)
                              .textFieldStyle(RoundedBorderTextFieldStyle())
-                         Picker("Folder", selection: $selectedFolder) {
-                             ForEach(defaultFolderOptions, id: \.self) { Text($0) }
-                         }
+                               Picker("Folder", selection: $selectedFolderID) {
+                                            Text("Unfiled").tag(UUID?.none) // Option for no folder
+                                            ForEach(folders) { folder in
+                                                Text(folder.name).tag(folder.id as UUID?) // Tag with the folder's ID
+                                            }
+                                        }
                          .padding(.vertical, 5).background(Color(.systemGray6)).cornerRadius(8)
                          TextField("Tags (comma separated)", text: $tags)
                              .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -226,7 +249,7 @@ struct ScanEditView: View {
 
                     // --- ADDED: Local Save Button ---
                     Button { saveLocally() } label: {
-                         HStack { Image(systemName: "iphone.and.arrow.down"); Text(isSavingLocally ? "Saving Locally..." : "Save Locally") }.frame(maxWidth: .infinity)
+                         HStack { Image(systemName: "icloud.and.arrow.down"); Text(isSavingLocally ? "Saving Locally..." : "Save Locally") }.frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered).disabled(isSavingLocally || isSavingToICloud || scannedDocument == nil) // Use bordered style, disable if saving
 
@@ -307,7 +330,7 @@ struct ScanEditView: View {
             // Provide the QuickLookView with the URL to preview
             if let url = pdfPreviewURL {
                 QuickLookView(url: url)
-//                    .ignoresSafeArea() // Make preview edge-to-edge
+                    .ignoresSafeArea() // Make preview edge-to-edge
             } else {
 //                QuickLookView(url: nil)
                 Text("Error preparing preview data.") // Fallback view
@@ -317,26 +340,34 @@ struct ScanEditView: View {
 
     // MARK: - Document Processing and OCR Functions
 
-    /// Extracts images from the `scannedDocument` and triggers OCR.
+   
     private func processScannedDocument() {
         guard let scan = scannedDocument else { ocrError = "No scan data available."; ocrText = ""; return }
         print("Processing scanned document with \(scan.pageCount) pages.")
         var extractedImages: [CGImage] = []
+        // Perform extraction on background thread
         DispatchQueue.global(qos: .userInitiated).async {
             for i in 0..<scan.pageCount {
                 let originalImage = scan.imageOfPage(at: i)
                 if let cgImage = originalImage.cgImage { extractedImages.append(cgImage) }
                 else { print("Warning: Could not get CGImage for page \(i)") }
             }
+            // Update UI on main thread
             DispatchQueue.main.async {
                 self.imagesToProcess = extractedImages
                 print("Extracted \(self.imagesToProcess.count) images.")
-                if !self.imagesToProcess.isEmpty { performOCROnImages(images: self.imagesToProcess) }
-                else { self.ocrText = "Error: Could not extract images from scan."; self.ocrError = "Image extraction failed." }
+                // Check if images were extracted and trigger OCR
+                if !self.imagesToProcess.isEmpty {
+                    performOCROnImages(images: self.imagesToProcess)
+                } else {
+                    // Handle case where no images could be extracted
+                    self.ocrText = "Error: Could not extract images from scan."
+                    self.ocrError = "Image extraction failed."
+                }
+                // Removed stray semicolon and fixed placement of the if/else block
             }
         }
     }
-
     /// Performs OCR using the Vision framework on an array of CGImage objects.
     private func performOCROnImages(images: [CGImage]) {
         guard !images.isEmpty else { ocrError = "No images provided for OCR."; ocrText = ""; return }
@@ -347,6 +378,9 @@ struct ScanEditView: View {
             for (i, cgImage) in images.enumerated() {
                 group.enter()
                 let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+                
+                let requestHandler2 = VNImageRequestHandler(cgImage: cgImage, options: [:])
+                
                 let recognizeTextRequest = VNRecognizeTextRequest { (request, error) in
                     var pageText = ""
                     if let error = error { print("Error performing OCR on page \(i): \(error.localizedDescription)"); pageText = "[OCR Error on page \(i + 1)]" }
@@ -354,14 +388,33 @@ struct ScanEditView: View {
                     recognizedTextAggregator[i] = pageText; group.leave()
                 }
                 recognizeTextRequest.recognitionLevel = .accurate; recognizeTextRequest.usesLanguageCorrection = true
+                
+                let recog = VNClassifyImageRequest { (request, error) in
+                    if let error = error { print("Error performing Classify on page \(i): \(error.localizedDescription)"); }
+                    else if let observations = request.results as? [VNClassificationObservation]  {
+                        for classification in observations {
+                            if classification.confidence > 0.5 {
+                                print("Classified \(classification.identifier)")
+                                print("Con \(classification.confidence)")
+                            }
+                           
+                        }
+                    }
+                          
+                }
+//                recog; recognizeTextRequest.usesLanguageCorrection = true
+                
                 do { try requestHandler.perform([recognizeTextRequest]) }
                 catch { print("Failed to perform text recognition request on page \(i): \(error)"); recognizedTextAggregator[i] = "[Request Error on page \(i + 1)]"; group.leave() }
+                do { try requestHandler2.perform([recog]) } catch { print("VNClassifyImageRequest Failed to perform text recognition reque")}
             }
             group.notify(queue: .main) {
                 let finalCombinedText = recognizedTextAggregator.sorted(by: { $0.key < $1.key }).map({ $0.value }).joined(separator: "\n\n--- Page Break ---\n\n")
                 let trimmedText = finalCombinedText.trimmingCharacters(in: .whitespacesAndNewlines)
                 self.ocrText = trimmedText.isEmpty ? "No text recognized." : trimmedText
-                self.ocrInProgress = false; print("Vision OCR on scanned images complete.")
+                self.ocrInProgress = false;
+                self.recognizedTexts.append(contentsOf: recognizedTextAggregator.sorted(by: { $0.key < $1.key }).map({ $0.value }))
+                print("Vision OCR on scanned images complete. Total: \(self.recognizedTexts.count)")
             }
         }
     }
@@ -492,6 +545,8 @@ struct ScanEditView: View {
         isSavingLocally = true; localSaveError = nil; showLocalSaveConfirmation = false
         // Clear iCloud save status if shown
         iCloudSaveError = nil; showICloudSaveConfirmation = false
+        
+    
 
         DispatchQueue.global(qos: .userInitiated).async {
             // 1. Get Local Documents URL
@@ -517,6 +572,7 @@ struct ScanEditView: View {
             do {
                 try pdfData.write(to: destinationURL, options: .atomic)
                 print("Successfully saved PDF locally: \(destinationURL.path)")
+                saveMetadata(fileName: destinationURL.path, storageLocation: "local")
 
                 // --- ADDED: Spotlight Indexing ---
                 // Index *after* successful save
@@ -543,6 +599,38 @@ struct ScanEditView: View {
         }
     }
 
+
+  // Function to save the document metadata using SwiftData
+    private func saveMetadata(fileName: String, storageLocation: String) {
+        // Find the selected folder object based on the stored ID
+        let selectedFolder = folders.first { $0.id == selectedFolderID }
+
+        // Create the ScannedDocument object
+        let newDocument = ScannedDocument(
+            title: scanTitle,
+            fileName: fileName,
+            storageLocation: storageLocation,
+            ocrText: ocrText, // Make sure ocrText state holds the final text
+            tags: tags,
+            folder: selectedFolder // Assign the relationship
+        )
+
+        // Insert into the context
+        modelContext.insert(newDocument)
+
+        // Optional: Force save if needed, though autosave is common
+        // do {
+        //     try modelContext.save()
+        //     print("Saved document metadata: \(newDocument.title)")
+        //     // Handle successful save (e.g., dismiss view)
+        // } catch {
+        //     print("Error saving document metadata: \(error)")
+        //     // Handle error
+        // }
+
+         // Trigger Spotlight indexing *after* saving metadata and file
+         // indexFileInSpotlight(...) // Pass appropriate URL and data
+    }
 
     /// Helper function to determine the final unique URL for saving a file.
     /// - Parameter directoryURL: The directory (local or iCloud) to save into.
@@ -607,12 +695,28 @@ struct InfoButton: View {
     }
 }
 
-// MARK: - Preview Provider for ScanEditView
-struct ScanEditView_Previews: PreviewProvider {
-    static var previews: some View {
-        NavigationView {
-            // Pass nil for preview, showing the "No Scan Data" placeholder
-            ScanEditView(scannedDocument: nil)
-        }
-    }
-}
+//// MARK: - Preview Provider for ScanEditView
+//struct ScanEditView_Previews: PreviewProvider {
+//    // --- ADDED: MainActor and Preview Container Setup ---
+//    @MainActor static var previewContainer: ModelContainer = {
+//         let schema = Schema([ Folder.self, ScannedDocument.self ]) // Add your models
+//         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+//         do {
+//             let container = try ModelContainer(for: schema, configurations: [configuration])
+//             // Optional: Insert sample folders for the picker
+//             let sampleFolder = Folder(name: "Preview Folder")
+//             container.mainContext.insert(sampleFolder)
+//             return container
+//         } catch {
+//             fatalError("Failed to create preview model container: \(error)")
+//         }
+//     }()
+//
+//    static var previews: some View {
+//        NavigationView {
+//            ScanEditView(scannedDocument: nil)
+//                // --- ADDED: ModelContainer for Preview ---
+//                .modelContainer(previewContainer)
+//        }
+//    }
+//}

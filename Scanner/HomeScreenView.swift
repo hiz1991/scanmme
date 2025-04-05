@@ -1,257 +1,356 @@
-// MARK: - HomeScreenView.swift
-// Create a new SwiftUI View file named HomeScreenView.swift and paste this code.
-
 import SwiftUI
-import VisionKit
-
-// Placeholder View for the Scanner Interface
-struct ScannerView: View {
-    // Environment variable to dismiss the sheet/cover
-    @Environment(\.dismiss) var dismiss
-    
-    // Callback to simulate finishing a scan and potentially navigating
-    // In a real app, this would likely pass the scanned data back
-    var onScanComplete: () -> Void
-    
-    var body: some View {
-        NavigationView { // Embed in NavigationView for a toolbar
-            VStack {
-                Spacer()
-                Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 100))
-                    .foregroundColor(.gray)
-                Text("Scanning Subsystem Placeholder")
-                    .font(.title2)
-                    .padding(.top)
-                Spacer()
-                // Simulate capturing a document - Action now handled by onScanComplete
-                Button("Simulate Capture & Edit") {
-                }
-                .navigationTitle("Scan Document")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Cancel") {
-                            dismiss() // Dismiss the sheet
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+import SwiftData // For @Query, @Environment, etc.
+import VisionKit // For VNDocumentCameraScan and DocumentScannerView
 
 
 struct HomeScreenView: View {
-    // State for the search field
-    @State private var searchText = ""
-    // State to trigger navigation to the edit screen AFTER scanning
-    @State private var navigateToEditScreen = false
-    // State to present the scanner view
-    @State private var isShowingScanner = false
-    
-    // --- ADDED: State for scanner results ---
-    @State private var scannedDocument: VNDocumentCameraScan? = nil
-    @State private var scanError: Error? = nil
-    
+    // Environment & State variables
+    @Environment(\.modelContext) private var modelContext // Access SwiftData context
+    @Query(sort: \Folder.createdAt, order: .forward) var folders: [Folder] // Fetch folders
+    @State private var newFolderName: String = "" // For adding new folders
+    @State private var searchText = "" // For search bar
+    @State private var navigateToEditScreen = false // Controls navigation to edit view
+    @State private var isShowingScanner = false // Controls presentation of scanner sheet
+    @State private var scannedDocument: VNDocumentCameraScan? = nil // Holds result from scanner
+    @State private var scanError: Error? = nil // Holds error from scanner
+
     var body: some View {
         NavigationView {
-            // Use ZStack to overlay buttons over the scrollable content
             ZStack(alignment: .bottom) {
+                // Main scrollable content
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) { // Increased spacing a bit
-                        // Search Bar
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.gray)
-                            TextField("Search scans...", text: $searchText)
-                        }
-                        .padding(10)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                        .padding(.horizontal)
-                        
-                        // Recent Scans Section
-                        Section {
-                            VStack(spacing: 10) {
-                                RecentScanItem(icon: "doc.text", iconColor: .blue, title: "Electricity Bill - March", date: "Scanned: Apr 1, 2025", tag: "Bill", tagColor: .blue)
-                                RecentScanItem(icon: "envelope", iconColor: .green, title: "Letter from Aunt May", date: "Scanned: Mar 30, 2025", tag: "Personal", tagColor: .green)
-                            }
-                            .padding(.horizontal)
-                        } header: {
-                            Text("Recent Scans")
-                                .font(.title2.weight(.semibold))
-                                .padding(.horizontal)
-                            // Ensure header aligns with list content if needed
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        
-                        
-                        // Folders Section
-                        Section {
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 15) {
-                                FolderItem(icon: "folder", iconColor: .yellow, title: "Bills")
-                                FolderItem(icon: "folder", iconColor: .purple, title: "Personal")
-                                FolderItem(icon: "plus", iconColor: .gray, title: "Add Folder", isAddButton: true)
-                            }
-                            .padding(.horizontal)
-                        } header: {
-                            Text("Folders")
-                                .font(.title2.weight(.semibold))
-                                .padding(.horizontal)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        
-                        
-                        // Providers Section
-                        Section {
-                            VStack(spacing: 10) {
-                                ProviderItem(icon: "building.columns", title: "ATT")
-                                ProviderItem(icon: "building.columns", title: "Disney")
-                                // Using Vienna location context
-                                ProviderItem(icon: "leaf", iconColor: .green, title: "Eco Electricity Vienna")
-                            }
-                            .padding(.horizontal)
-                        } header: {
-                            Text("Providers")
-                                .font(.title2.weight(.semibold))
-                                .padding(.horizontal)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        
-                        // Spacer to ensure content doesn't sit right under the buttons
-                        // Adjust height as needed
-                        Spacer(minLength: 100)
-                        
-                    }
-                    .padding(.top) // Add padding at the top of the VStack
+                    VStack(alignment: .leading, spacing: 24) {
+
+                        SearchBarView(searchText: $searchText) // Extracted Search Bar
+
+                        RecentScansSectionView() // Extracted Recent Scans (uses placeholders)
+
+                        // Extracted Folders Section View using SwiftData
+                        FoldersSectionView(
+                            folders: folders, // Pass the fetched folders
+                            newFolderName: $newFolderName, // Pass binding for new name input
+                            addFolderAction: addFolder, // Pass the add function
+                            deleteFolderAction: deleteFolder // Pass the delete function
+                        )
+
+                        ProvidersSectionView() // Extracted Providers (uses placeholders)
+
+                        Spacer(minLength: 100) // Space at bottom before overlay buttons
+
+                    } // End VStack
+                    .padding(.top)
                 } // End ScrollView
                 .coordinateSpace(name: "scrollView") // For potential future scroll effects
-                
-                // --- Button Positioning (Absolute within ZStack) ---
-                // This positions the buttons relative to the bottom edge of the screen area
-                ZStack {
-                    // Main Scan Button Container (Frame) - Approx calculations for positioning
-                    let frameWidth: CGFloat = 72
-                    let mainButtonWidth: CGFloat = 64
-                    let autoButtonWidth: CGFloat = 40
-                    let gap: CGFloat = 4
-                    let screenWidth = UIScreen.main.bounds.width
-                    let frameX = screenWidth / 2
-                    let frameY: CGFloat = frameWidth / 2 // Y position relative to bottom padding
-                    
-                    Circle()
-                        .fill(Color(.systemGray5)) // Frame color
-                        .frame(width: frameWidth, height: frameWidth) // 64 + 2*4 padding
-                        .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
-                        .position(x: frameX, y: frameY) // Position frame center
-                    
-                    // Main Scan Button
-                    Button {
-                        print("Scan Tapped - Opening Scanner")
-                        // Remove direct navigation: navigateToEditScreen = true
-                        isShowingScanner = true // Present the scanner view
-                    } label: {
-                        Image(systemName: "viewfinder")
-                            .font(.system(size: 28, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(width: mainButtonWidth, height: mainButtonWidth)
-                            .background(Color.blue)
-                            .clipShape(Circle())
-                            .shadow(color: Color.blue.opacity(0.4), radius: 5, y: 3)
-                    }
-                    .position(x: frameX, y: frameY) // Position button center
-                    
-                    // Auto Scan Button
-                    Button {
-                        print("Auto Scan Tapped - Opening Scanner")
-                        // TODO: Implement specific auto-scan logic if different
-                        isShowingScanner = true // Also present the scanner view
-                    } label: {
-                        Image(systemName: "film")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(width: autoButtonWidth, height: autoButtonWidth)
-                            .background(Color.blue) // Make background solid blue
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-                    }
-                    .opacity(0.8) // Apply opacity
-                    // Calculate X: Center + Frame Radius + Gap + Auto Button Radius
-                    .position(x: frameX + (frameWidth / 2) + gap + (autoButtonWidth / 2),
-                              // Align Y centers (Main button Y is frameY)
-                              y: frameY)
-                }
-                .frame(height: 72) // Container height for positioning within ZStack overlay
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom) // Align container to ZStack bottom
-                .padding(.bottom, 30) // Overall padding from device safe area bottom
-                
-                
-            } // End ZStack
+
+                // Overlay for Scan Buttons
+                ScanButtonsOverlayView(isShowingScanner: $isShowingScanner)
+
+            } // End ZStack (Main content ZStack)
             .navigationTitle("LetterScan")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        print("Settings Tapped")
-                        // TODO: Implement navigation to settings
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                }
+                 ToolbarItem(placement: .navigationBarTrailing) {
+                     Button {
+                         print("Settings Tapped")
+                         // TODO: Implement navigation to settings
+                     } label: {
+                         Image(systemName: "gearshape")
+                     }
+                 }
             }
-            // Link to the Edit Screen - Navigation is now triggered AFTER scanning
+            // Background NavigationLink for programmatic navigation to ScanEditView
             .background(
-                // Invisible NavigationLink for programmatic navigation
-                NavigationLink(destination: ScanEditView(scannedDocument: self.scannedDocument), isActive: $navigateToEditScreen) { EmptyView() }
-                    .opacity(0) // Make it invisible
+                NavigationLink(
+                    // Ensure ScanEditView initializer accepts VNDocumentCameraScan?
+                    destination: ScanEditView(scannedDocument: self.scannedDocument),
+                    isActive: $navigateToEditScreen
+                ) { EmptyView() }
+                .opacity(0)
             )
-            // Modifier to present the scanner view modally
-            // --- MODIFIED: Present the REAL scanner ---
+            // Sheet presentation for the scanner
             .sheet(isPresented: $isShowingScanner, onDismiss: {
-                // --- MODIFIED: Navigate only if a scan was successful ---
+                // Navigation logic after scanner dismissal
                 if scannedDocument != nil {
                     print("Scanner sheet dismissed, successful scan detected. Navigating.")
                     navigateToEditScreen = true
-                    // Important: Consider resetting scannedDocument after navigation trigger
-                    // to avoid re-triggering if the sheet is presented again.
-                    // scannedDocument = nil // Or handle this in ScanEditView's onAppear/onDisappear
+                    // Consider resetting scannedDocument = nil here or in ScanEditView's onDisappear
                 } else {
                     print("Scanner sheet dismissed, no successful scan detected.")
-                    // Reset error if needed
-                    scanError = nil
+                    scanError = nil // Reset error
                 }
             }) {
-                // This is the view that will be presented
-                // Present the DocumentScannerView wrapper
-                DocumentScannerView { result in
-                    // This closure receives the result from the scanner's Coordinator
-                    switch result {
-                    case .success(let scan):
-                        print("Scan received in HomeScreenView. Page count: \(scan.pageCount)")
-                        self.scannedDocument = scan // Store the successful scan result
-                        self.scanError = nil // Clear any previous error
-                    case .failure(let error):
-                        print("Scan failed in HomeScreenView: \(error.localizedDescription)")
-                        self.scanError = error // Store the error
-                        self.scannedDocument = nil // Clear any previous scan
-                    }
-                    // Note: Dismissal is handled by the Coordinator/onDismiss now
-                }
-                // Alternatively, use .fullScreenCover for a non-dismissible-by-swipe presentation
-                // .fullScreenCover(isPresented: $isShowingScanner) { ScannerView(...) }
-                
+                 // Present the actual DocumentScannerView (ensure it's defined)
+                 // This placeholder needs to be replaced with the real implementation
+                 // that uses VisionKit and calls the onScanResult closure.
+                 DocumentScannerView { result in                     
+                     switch result {
+                     case .success(let scan):
+                         print("Scan received in HomeScreenView. Page count: \(scan.pageCount)")
+                         self.scannedDocument = scan
+                         self.scanError = nil
+                     case .failure(let error):
+                         print("Scan failed in HomeScreenView: \(error.localizedDescription)")
+                         self.scanError = error
+                         self.scannedDocument = nil
+                     }
+                 }
             }
-            // Use stack style for broader compatibility, especially on iPad
-            .navigationViewStyle(.stack)
+        } // End NavigationView
+        .navigationViewStyle(.stack) // Use stack style
+    }
+
+    // MARK: - Data Functions
+
+    /// Adds a new folder to SwiftData.
+    private func addFolder() {
+        let trimmedName = newFolderName.trimmingCharacters(in: .whitespaces)
+        guard !trimmedName.isEmpty else { return } // Don't add empty names
+        let newFolder = Folder(name: trimmedName, colorHex: ["#EAAA00","#DC63EA","#6CC7EA","#59EA38"][Int.random(in: 0..<4)])
+        modelContext.insert(newFolder) // Insert into SwiftData context
+        newFolderName = "" // Clear the input field
+        print("Added folder: \(newFolder.name)")
+        // Note: SwiftData typically autosaves. Manual save below if needed.
+        // try? modelContext.save()
+    }
+
+    /// Deletes a specific folder from SwiftData.
+    private func deleteFolder(folder: Folder) {
+        withAnimation { // Animate the deletion if part of a List
+            modelContext.delete(folder)
+            print("Deleted folder: \(folder.name)")
+            // try? modelContext.save() // Optional manual save
         }
-        
-        
+    }
+
+     // --- Placeholder for DocumentScannerView ---
+     // Replace this with the actual implementation using UIViewControllerRepresentable
+     // and VNDocumentCameraViewController as shown in previous examples.
+//     struct DocumentScannerView: View {
+//         var onScanResult: (Result<VNDocumentCameraScan, Error>) -> Void
+//         // Need @Environment(\.dismiss) var dismiss inside the real one
+//         var body: some View {
+//            VStack {
+//                Text("Placeholder Scanner View")
+//                Button("Simulate Scan Success") {
+//                    // In a real implementation, the delegate would call this
+//                    // For placeholder, we simulate success with a dummy scan object if possible
+//                    // Or just simulate the flow without real data
+//                     print("Simulating scan success...")
+//                     // onScanResult(.success(VNDocumentCameraScan())) // Needs a real scan object
+//                     // For testing flow:
+//                     // 1. Set a dummy scan object (if you can create one) OR
+//                     // 2. Just call the completion with a placeholder/nil that triggers navigation logic
+//                     // For now, just print and let the onDismiss handle it (assuming scannedDocument is set somehow)
+//                     // parent.dismiss() // The real coordinator would call dismiss
+//                }
+//                Button("Simulate Cancel") {
+//                     // parent.dismiss()
+//                }
+//            }
+//         }
+//     }
+}
+
+// MARK: - Extracted View Structs
+
+/// View for the search bar
+struct SearchBarView: View {
+    @Binding var searchText: String
+    var body: some View {
+        HStack {
+            Image(systemName: "magnifyingglass").foregroundColor(.gray)
+            TextField("Search scans...", text: $searchText)
+        }
+        .padding(10)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
+        .padding(.horizontal)
     }
 }
 
-    
-// MARK: - Home Screen Helper Views
+/// Section displaying recent scans (uses placeholder data)
+struct RecentScansSectionView: View {
+    // TODO: Replace with @Query fetching ScannedDocument objects
+    var body: some View {
+        Section {
+            VStack(spacing: 10) {
+                // Replace with ForEach over fetched documents
+                RecentScanItem(icon: "doc.text", iconColor: .blue, title: "Electricity Bill - March", date: "Scanned: Apr 1, 2025", tag: "Bill", tagColor: .blue)
+                RecentScanItem(icon: "envelope", iconColor: .green, title: "Letter from Aunt May", date: "Scanned: Mar 30, 2025", tag: "Personal", tagColor: .green)
+            }
+            .padding(.horizontal)
+        } header: {
+            Text("Recent Scans")
+                .font(.title2.weight(.semibold))
+                .padding(.horizontal)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
 
+/// Section displaying folders from SwiftData and UI for adding new folders
+struct FoldersSectionView: View {
+    // Input: The fetched folders array from the parent view's @Query
+    let folders: [Folder]
+    // Input: Binding for the new folder name TextField
+    @Binding var newFolderName: String
+    // Input: Closures for actions defined in the parent view
+    let addFolderAction: () -> Void
+    let deleteFolderAction: (Folder) -> Void
+
+    // Grid layout configuration
+    private let columns: [GridItem] = [
+        GridItem(.adaptive(minimum: 140)) // Responsive grid columns
+    ]
+
+    var body: some View {
+        Section {
+            // --- UI for Adding Folders ---
+            HStack {
+                TextField("New Folder Name", text: $newFolderName)
+                    .textFieldStyle(.roundedBorder)
+                Button("Add", action: addFolderAction)
+                    .disabled(newFolderName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 5) // Spacing
+            
+            // --- Grid Displaying Actual Folders ---
+            if folders.isEmpty {
+                Text("No folders yet. Add one above!")
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal)
+            } else {
+                LazyVGrid(columns: columns, spacing: 15) {
+                    ForEach(folders) { folder in
+                        FolderItemView(folder: folder) // Use dedicated view for each item
+                        
+                        // Add context menu for deletion (alternative to swipe-to-delete)
+                            .contextMenu {
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    deleteFolderAction(folder)
+                                }
+                                // Add other actions like Rename here
+                            }
+                        // TODO: Wrap with NavigationLink if tapping should navigate
+                        // NavigationLink(destination: FolderDetailView(folder: folder)) {
+                        //    FolderItemView(folder: folder)
+                        // }
+                    }
+                }
+                .padding(.horizontal)
+            }
+        } header: {
+            Text("Folders")
+                .font(.title2.weight(.semibold))
+                .padding(.horizontal)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// View for displaying a single folder item in the grid
+struct FolderItemView: View {
+    // Use @ObservedObject because Folder is a class (@Model)
+    // Ensure Folder conforms to ObservableObject if not using @Model directly (but @Model handles it)
+    var folder: Folder
+
+    var body: some View {
+         HStack {
+            // Display icon (default or custom)
+            Image(systemName: folder.iconName ?? "folder")
+                // Example: Apply color if available
+                 .foregroundColor(folder.colorHex != nil ? (Color(hex:folder.colorHex!)) : .accentColor)
+            // Display folder name
+            Text(folder.name)
+                .lineLimit(1) // Prevent long names wrapping badly
+            Spacer()
+            // Display count of documents in the folder
+            Text("\(folder.documents?.count ?? 0)")
+                 .font(.caption2)
+                 .foregroundColor(.secondary)
+                 .padding(.horizontal, 5)
+                 .background(Color(.systemGray5))
+                 .clipShape(Capsule())
+
+        }
+        .padding() // Padding inside the item
+        .background(Color(.secondarySystemBackground)) // Background color
+        .cornerRadius(10) // Rounded corners
+    }
+}
+
+/// Section displaying providers (uses placeholder data)
+struct ProvidersSectionView: View {
+    // TODO: Replace with actual data source and logic
+    var body: some View {
+        Section {
+             VStack(spacing: 10) {
+                 ProviderItem(icon: "building.columns", title: "ATT")
+                 ProviderItem(icon: "building.columns", title: "Disney")
+                 ProviderItem(icon: "leaf", iconColor: .green, title: "Eco Electricity Vienna")
+             }
+             .padding(.horizontal)
+        } header: {
+             Text("Providers")
+                .font(.title2.weight(.semibold))
+                .padding(.horizontal)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// View for the scan buttons overlay at the bottom
+struct ScanButtonsOverlayView: View {
+    @Binding var isShowingScanner: Bool
+    // TODO: Potentially pass actions for the buttons if needed
+
+    var body: some View {
+        ZStack {
+            // Using HStack for simpler centering layout example
+            HStack(spacing: 20) {
+                 Spacer() // Pushes buttons to center
+
+                 // Main Scan Button
+                 Button {
+                     print("Scan Tapped - Opening Scanner")
+                     isShowingScanner = true
+                 } label: {
+                     Image(systemName: "viewfinder")
+                         .font(.system(size: 28, weight: .medium))
+                         .foregroundColor(.white)
+                         .frame(width: 64, height: 64)
+                         .background(Color.blue)
+                         .clipShape(Circle())
+                         .shadow(color: Color.blue.opacity(0.4), radius: 5, y: 3)
+                 }
+
+                 // Auto Scan Button
+                 Button {
+                     print("Auto Scan Tapped - Opening Scanner")
+                     // TODO: Implement specific auto-scan logic if different
+                     isShowingScanner = true
+                 } label: {
+                     Image(systemName: "film")
+                         .font(.system(size: 18, weight: .medium))
+                         .foregroundColor(.blue) // Use accent color
+                         .frame(width: 40, height: 40)
+                         .background(.thinMaterial) // Use material background for contrast
+                         .clipShape(Circle())
+                         .shadow(color: .black.opacity(0.1), radius: 3, y: 2)
+                 }
+
+                 Spacer() // Pushes buttons to center
+            }
+            .padding(.bottom, 30) // Padding from bottom safe area
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom) // Align overlay to bottom
+    }
+}
+
+
+// MARK: - Helper Views (Copied from original user code)
+
+/// View for displaying a recent scan item (placeholder)
 struct RecentScanItem: View {
     let icon: String
     let iconColor: Color
@@ -265,7 +364,7 @@ struct RecentScanItem: View {
             Image(systemName: icon)
                 .font(.title2)
                 .foregroundColor(iconColor)
-                .frame(width: 30, alignment: .center) // Align icons
+                .frame(width: 30, alignment: .center)
 
             VStack(alignment: .leading) {
                 Text(title).font(.headline).lineLimit(1)
@@ -282,37 +381,13 @@ struct RecentScanItem: View {
                 .foregroundColor(tagColor)
                 .clipShape(Capsule())
         }
-        .padding(12) // Slightly more padding
+        .padding(12)
         .background(Color(.systemGray6))
-        .cornerRadius(10) // Slightly more rounded
-    }
-}
-
-struct FolderItem: View {
-    let icon: String
-    let iconColor: Color
-    let title: String
-    var isAddButton: Bool = false
-
-    var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundColor(isAddButton ? .gray : iconColor)
-            Text(title)
-                .font(.subheadline.weight(.medium)) // Adjusted font
-                .foregroundColor(isAddButton ? .gray : .primary.opacity(0.9))
-            Spacer()
-        }
-        .padding()
-        .background(isAddButton ? Color(.systemGray6) : iconColor.opacity(0.1))
         .cornerRadius(10)
-        .onTapGesture {
-             print("\(title) folder tapped")
-             // TODO: Implement navigation or action
-         }
     }
 }
 
+/// View for displaying a provider item (placeholder)
 struct ProviderItem: View {
     let icon: String
     var iconColor: Color = .gray // Default color
@@ -322,7 +397,7 @@ struct ProviderItem: View {
         HStack {
             Image(systemName: icon)
                 .foregroundColor(iconColor)
-                .frame(width: 30, alignment: .center) // Align icons
+                .frame(width: 30, alignment: .center)
 
             Text(title)
                 .font(.headline)
@@ -330,9 +405,9 @@ struct ProviderItem: View {
 
             Spacer()
         }
-        .padding(12) // Slightly more padding
+        .padding(12)
         .background(Color(.systemGray6))
-        .cornerRadius(10) // Slightly more rounded
+        .cornerRadius(10)
         .onTapGesture {
              print("\(title) provider tapped")
              // TODO: Implement navigation or action
@@ -340,13 +415,45 @@ struct ProviderItem: View {
     }
 }
 
-
-// MARK: - Preview Provider for HomeScreenView
+// MARK: - Preview Provider
 struct HomeScreenView_Previews: PreviewProvider {
     static var previews: some View {
-        HomeScreenView()
+        NavigationView {
+            HomeScreenView()
+                .modelContainer(for: [Folder.self, ScannedDocument.self])
+        }
     }
 }
-
-
+//    static var previews: some View {
+//        HomeScreenView(folders: [
+//            Folder(name: "Personal", iconName: "folder.fill", colorHex: "#FFA500"),
+//            Folder(name: "Work", iconName: "folder.fill", colorHex: "#007AFF")
+//          ])
+//            // --- IMPORTANT for Previews with SwiftData ---
+//            // Provide a model container. Use inMemory: true so preview data
+//            // doesn't persist between launches and doesn't interfere with real data.
+//            // You can also add sample data here for previewing.
+//            .modelContainer(previewContainer) // Use shared preview container
+//    }
+//
+//    // Helper for creating sample data and the container for previews
+//    @MainActor static var previewContainer: ModelContainer = {
+//        let schema = Schema([
+//            Folder.self,
+//            ScannedDocument.self,
+//        ])
+//        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+//        do {
+//            let container = try ModelContainer(for: schema, configurations: [configuration])
+//            // Add sample data
+//            let sampleFolder1 = Folder(name: "Bills")
+//            let sampleFolder2 = Folder(name: "Personal")
+//            container.mainContext.insert(sampleFolder1)
+//            container.mainContext.insert(sampleFolder2)
+//            // Add sample documents if needed and link them to folders
+//            return container
+//        } catch {
+//            fatalError("Failed to create model container for preview: \(error)")
+//        }
+//    }()
 

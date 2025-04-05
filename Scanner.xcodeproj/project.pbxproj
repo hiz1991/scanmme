@@ -15,6 +15,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				test.swift,
 			);
 			target = 7D213E502D9DCC8400FD52BB /* Scanner */;
 		};
