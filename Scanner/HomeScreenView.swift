@@ -48,6 +48,12 @@ struct HomeScreenView: View {
 
             } // End ZStack (Main content ZStack)
             .navigationTitle("LetterScan")
+            // ----> OBSERVE THE NOTIFICATION HERE <----
+                      .onReceive(NotificationCenter.default.publisher(for: .startNewScanNotification)) { notification in
+                          print("Received notification: \(notification.name)")
+                          // Set the state variable to true, just like the manual button does
+                          self.isShowingScanner = true
+                      }
             .toolbar {
                  ToolbarItem(placement: .navigationBarTrailing) {
                      Button {
@@ -67,6 +73,7 @@ struct HomeScreenView: View {
                 ) { EmptyView() }
                 .opacity(0)
             )
+                
             // Sheet presentation for the scanner
             .sheet(isPresented: $isShowingScanner, onDismiss: {
                 // Navigation logic after scanner dismissal

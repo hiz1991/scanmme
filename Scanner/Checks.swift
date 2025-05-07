@@ -26,6 +26,8 @@ func checkForDuplicatePages(in pdfDocument: PDFDocument) -> [(Int, Int)] {
 
     let pageCount = pdfDocument.pageCount
     var pageImages: [UIImage] = []
+    
+    debugPrint("Starting checkForDuplicatePages...")
 
     // Render each page as an image
     for i in 0..<pageCount {

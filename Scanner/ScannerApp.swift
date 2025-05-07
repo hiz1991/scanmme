@@ -12,6 +12,7 @@ struct ScannerApp: App {
     var body: some Scene {
         WindowGroup {
             HomeScreenView() // Your starting view
+//            iPhonePortrait()
         }
         // Add the model container, specifying the models to manage
         // SwiftData automatically creates the underlying storage (e.g., SQLite)
@@ -21,3 +22,8 @@ struct ScannerApp: App {
 
     }
 }
+
+// In a shared file (e.g., AppNotifications.swift) or within your App definition
+
+import Foundation
+
