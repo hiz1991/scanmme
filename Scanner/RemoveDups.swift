@@ -19,6 +19,7 @@ class YourOCRProcessor: ObservableObject {
     // @Published var finalImages: [CGImage] = [] // Uncomment if needed
     
     @Published var keptPageIndices: [Int] = [] // <--- ADD THIS PROPERTY
+    
 
     // Lock only for writing to the aggregator during concurrent OCR phase
     private let aggregatorLock = NSLock()
@@ -136,6 +137,7 @@ class YourOCRProcessor: ObservableObject {
 
         // --- PHASE 2: Sequential Comparison and Final Update (on Main Thread) ---
         group.notify(queue: .main) { [weak self] in
+            
             guard let self = self else { return }
 
             print("--- All OCR tasks finished. Starting sequential comparison (Main Thread)... ---")
@@ -144,12 +146,14 @@ class YourOCRProcessor: ObservableObject {
             let sortedResults: [PageOCRResult] = pageResultsAggregator
                 .sorted { $0.key < $1.key }
                 .map { $0.value }
+        
 
             guard !sortedResults.isEmpty else {
                 print("No OCR results gathered.")
                 self.ocrText = "No text recognized."; self.recognizedTexts = []; self.ocrInProgress = false
                 return
             }
+
 
             // 2. Perform sequential comparison
             var keptPageResults: [PageOCRResult] = []
@@ -160,16 +164,21 @@ class YourOCRProcessor: ObservableObject {
                 keptPageResults.append(firstPage) // Always keep the first page initially
                 print("Kept Page \(firstPage.originalIndex + 1) (First Page)")
             }
+            
 
             for i in 1..<sortedResults.count {
                 let currentPageResult = sortedResults[i]
+                
                 // IMPORTANT: Compare against the *last page actually kept*, not just sortedResults[i-1]
                 guard let lastKeptPageResult = keptPageResults.last else { continue }
 
                 let similarity = self.similarityIndex(between: lastKeptPageResult.text, and: currentPageResult.text)
                 print("Comparing Page \(currentPageResult.originalIndex + 1) [Conf \(String(format: "%.3f", currentPageResult.averageConfidence))] vs LAST KEPT Page \(lastKeptPageResult.originalIndex + 1) [Conf \(String(format: "%.3f", lastKeptPageResult.averageConfidence))]: Similarity \(String(format: "%.3f", similarity))")
+                
+                let shouldRemoveDupsEnabled: Bool = UserDefaults.standard.bool(forKey: "settings.shouldRemoveDupsEnabled")
 
-                if similarity > SIMILARITY_THRESHOLD {
+
+                if similarity > SIMILARITY_THRESHOLD && shouldRemoveDupsEnabled == true {
                     print("-> High similarity detected!")
                     // If current is better, replace the last kept one
                     if currentPageResult.averageConfidence > lastKeptPageResult.averageConfidence {

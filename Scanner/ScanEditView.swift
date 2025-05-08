@@ -143,10 +143,10 @@ struct ScanEditView: View {
                         prepareAndShowQLPreview()
                     } label: {
                         Image(systemName: "doc.text.magnifyingglass")
-                        Text("Preview PDF")
+                        Text("Preview PDF, \(self.imagesToProcess.count)")
                     }
                     .buttonStyle(.bordered)
-                    .padding([.bottom, .trailing])
+                    .padding(.horizontal, 10)
                     .disabled(scannedDocument == nil || imagesToProcess.isEmpty)
                 }
                 // --- END Preview Area ---
@@ -314,8 +314,10 @@ struct ScanEditView: View {
         // Sheet Modifier for QuickLook
         .sheet(isPresented: $showQLPreview, onDismiss: cleanupTemporaryFileForPreview) {
             if let url = pdfPreviewURL {
-                QuickLookView(url: url)
-                    .ignoresSafeArea()
+//                QuickLookView(url: url)
+//                    .ignoresSafeArea()
+                PDFQuickLookView(url: url)
+                    .edgesIgnoringSafeArea(.all) // Optional: to make it full screen within the sheet
             } else {
                 Text("Error preparing preview data.")
             }

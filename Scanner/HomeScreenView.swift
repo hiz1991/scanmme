@@ -11,10 +11,17 @@ struct HomeScreenView: View {
     @State private var searchText = "" // For search bar
     @State private var navigateToEditScreen = false // Controls navigation to edit view
     @State private var isShowingScanner = false // Controls presentation of scanner sheet
+    @State var showSettingsPopover = false
+    
     @State private var scannedDocument: VNDocumentCameraScan? = nil // Holds result from scanner
     @State private var scanError: Error? = nil // Holds error from scanner
     
 
+    // Gesture detection parameters
+    private let rightEdgeSwipeAreaWidth: CGFloat = 50 // Width of the touch area on the right edge
+    private let swipeActivationDistance: CGFloat = -70  // User must swipe at least this much to the left
+
+    
     var body: some View {
         NavigationView {
             ZStack(alignment: .bottom) {
@@ -58,6 +65,7 @@ struct HomeScreenView: View {
                  ToolbarItem(placement: .navigationBarTrailing) {
                      Button {
                          print("Settings Tapped")
+                         self.showSettingsPopover.toggle()
                          // TODO: Implement navigation to settings
                      } label: {
                          Image(systemName: "gearshape")
@@ -101,6 +109,30 @@ struct HomeScreenView: View {
                          self.scannedDocument = nil
                      }
                  }
+            }
+            .overlay(
+                       HStack {
+                           Spacer() // Pushes the gesture detection area to the right
+                           Color.clear // Invisible view to capture the gesture
+                               .frame(width: rightEdgeSwipeAreaWidth)
+                               .contentShape(Rectangle()) // Make the whole frame gesturable
+                               .gesture(
+                                   DragGesture(minimumDistance: 20, coordinateSpace: .global)
+                                       .onEnded { value in
+                                           // Check if swipe was to the left and far enough
+                                           if value.translation.width < swipeActivationDistance && value.predictedEndTranslation.width < swipeActivationDistance {
+                                               print("Right edge swipe detected, showing settings popover.")
+                                               self.showSettingsPopover = true
+                                           }
+                                       }
+                               )
+                       }
+                   )
+            .popover(isPresented: $showSettingsPopover, attachmentAnchor: .point(.topLeading), arrowEdge: .trailing) {
+                  
+                SettingsView(parent: self)
+                    .presentationBackground(.ultraThinMaterial)
+                
             }
         } // End NavigationView
         .navigationViewStyle(.stack) // Use stack style
@@ -330,21 +362,6 @@ struct ScanButtonsOverlayView: View {
                          .background(Color.blue)
                          .clipShape(Circle())
                          .shadow(color: Color.blue.opacity(0.4), radius: 5, y: 3)
-                 }
-
-                 // Auto Scan Button
-                 Button {
-                     print("Auto Scan Tapped - Opening Scanner")
-                     // TODO: Implement specific auto-scan logic if different
-                     isShowingScanner = true
-                 } label: {
-                     Image(systemName: "film")
-                         .font(.system(size: 18, weight: .medium))
-                         .foregroundColor(.blue) // Use accent color
-                         .frame(width: 40, height: 40)
-                         .background(.thinMaterial) // Use material background for contrast
-                         .clipShape(Circle())
-                         .shadow(color: .black.opacity(0.1), radius: 3, y: 2)
                  }
 
                  Spacer() // Pushes buttons to center
