@@ -329,6 +329,7 @@ struct ScanEditView: View {
     /// Extracts images from the VNDocumentCameraScan and triggers OCR processing.
     /// Extracts images from the VNDocumentCameraScan and triggers OCR processing.
     /// Extracts images from the VNDocumentCameraScan and triggers OCR processing.
+    ///
         private func processScannedDocument() {
             guard let scan = scannedDocument else {
                 // Update processor state directly on main thread if no scan
@@ -819,36 +820,77 @@ struct ScanEditView: View {
         return destinationURL
     }
 
-    /// Indexes the saved PDF file and its metadata using CoreSpotlight.
-    /// Can be called from background thread.
-    private func indexFileInSpotlight(fileURL: URL, title: String, ocrText: String, tags: String) {
-        let attributeSet = CSSearchableItemAttributeSet(contentType: UTType.pdf)
-        attributeSet.title = title
+   private func indexFileInSpotlight(fileURL: URL, title: String, ocrText: String, tags: String) {
+    // Initialize attribute set for PDF. Adjust UTType if handling other file types.
+    // Use kUTTypePDF as String for OS versions before iOS 14/macOS 11.
+    let attributeSet = CSSearchableItemAttributeSet(contentType: UTType.pdf)
 
-        if !ocrText.isEmpty && !ocrText.starts(with: "Processing") && !ocrText.starts(with: "[OCR Error") && ocrText != "No text recognized." {
-            attributeSet.contentDescription = ocrText
+    // Set the item's title.
+    attributeSet.title = title
+
+    // Log input OCR text for debugging.
+//    print("OCR TEXT (Input): \"\(ocrText)\"")
+
+    // --- OCR Text Handling ---
+    // Conditions for valid OCR text for indexing.
+    let isOcrTextValidForIndexing = !ocrText.isEmpty &&
+                                    !ocrText.starts(with: "Processing") && // Ignore "Processing..."
+                                    !ocrText.starts(with: "[OCR Error") &&   // Ignore OCR errors
+                                    ocrText != "No text recognized."        // Ignore "No text recognized"
+
+    if isOcrTextValidForIndexing {
+        // 1. Store full OCR text in 'textContent' for full-text search.
+        attributeSet.textContent = ocrText
+
+        // 2. Store OCR text (or summary) in 'contentDescription' (often for snippets).
+        // Consider truncating for very long ocrText.
+        attributeSet.contentDescription = ocrText
+    } else {
+        // If OCR text is invalid, set textContent and contentDescription to nil.
+        attributeSet.textContent = nil
+        attributeSet.contentDescription = nil
+    }
+
+    // --- Keywords Processing ---
+    // Split tags string, trim whitespace, and filter empty strings.
+    let keywordsArray = tags.split(separator: ",")
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+
+    if !keywordsArray.isEmpty {
+        attributeSet.keywords = keywordsArray
+    } else {
+        // Explicitly set to nil if no valid keywords.
+        attributeSet.keywords = nil
+    }
+
+    // Set the content URL (URL of the saved file).
+    attributeSet.contentURL = fileURL
+
+    // --- Create Searchable Item ---
+    // 'uniqueIdentifier': Stable, unique ID (e.g., fileURL.path).
+    // 'domainIdentifier': Groups items from your app.
+    let searchableItem = CSSearchableItem(
+        uniqueIdentifier: fileURL.path,
+        domainIdentifier: spotlightDomainIdentifier, // Ensure this is correctly defined.
+        attributeSet: attributeSet
+    )
+
+    // --- Indexing ---
+    // Asynchronous indexing. Completion handler called on finish or error.
+    CSSearchableIndex.default().indexSearchableItems([searchableItem]) { error in
+        if let error = error {
+            // Log indexing errors.
+            print("Error indexing item in Spotlight: \(error.localizedDescription) for file: \(fileURL.path)")
         } else {
-            attributeSet.contentDescription = nil
-        }
-
-        attributeSet.keywords = tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        attributeSet.contentURL = fileURL // URL of the *saved* file
-
-        let searchableItem = CSSearchableItem(
-            uniqueIdentifier: fileURL.path,
-            domainIdentifier: spotlightDomainIdentifier,
-            attributeSet: attributeSet
-        )
-
-        // Indexing API is asynchronous itself
-        CSSearchableIndex.default().indexSearchableItems([searchableItem]) { error in
-            if let error = error {
-                print("Error indexing item in Spotlight: \(error.localizedDescription) for \(fileURL.path)")
-            } else {
-                print("Successfully indexed item: \(title) - \(fileURL.path)")
-            }
+            // Log successful indexing.
+            print("Successfully indexed item: \"\(title)\" - Path: \(fileURL.path)")
+            // Debugging logs for indexed content (optional):
+            // print("   Indexed with textContent: \(attributeSet.textContent != nil ? "Yes" : "No") (Length: \(attributeSet.textContent?.count ?? 0))")
+            // print("   Indexed with keywords: \(attributeSet.keywords?.joined(separator: ", ") ?? "N/A")")
         }
     }
+}
 
     // Helper function to dismiss the keyboard
     private func hideKeyboard() {
